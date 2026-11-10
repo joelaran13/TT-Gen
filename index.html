@@ -444,6 +444,7 @@
         let globalData = [];
         let isInitialLoad = true;
         let countdown = 3;
+        let openTeams = new Set(); // Tracks expanded teams across live refresh cycles
 
         // Background Particle Embers Animation
         const canvas = document.getElementById('bg-canvas');
@@ -589,15 +590,16 @@
                 const statusClass = team.status.toLowerCase().replace(/\s+/g, '-');
                 const detailId = `details-${index}`;
                 const arrowId = `arrow-${index}`;
+                const isOpen = openTeams.has(team.name);
 
                 const mainTr = document.createElement('tr');
                 mainTr.className = 'main-row';
-                mainTr.onclick = () => toggleDetails(detailId, arrowId);
+                mainTr.onclick = () => toggleDetails(team.name, detailId, arrowId);
                 
                 mainTr.innerHTML = `
                     <td class="rank-cell ${rankClass}">${rankDisplay}</td>
                     <td style="text-align: left; padding-left: 25px;">
-                        ${team.name} <span id="${arrowId}" class="toggle-icon">▶</span>
+                        ${team.name} <span id="${arrowId}" class="toggle-icon ${isOpen ? 'rotated' : ''}">▶</span>
                     </td>
                     <td>${team.kills}</td>
                     <td>${team.placement}</td>
@@ -612,7 +614,7 @@
 
                 const detailTr = document.createElement('tr');
                 detailTr.id = detailId;
-                detailTr.className = 'details-row';
+                detailTr.className = `details-row ${isOpen ? 'open' : ''}`;
                 detailTr.innerHTML = `
                     <td colspan="6">
                         <div class="player-grid">
@@ -637,12 +639,19 @@
             });
         }
 
-        function toggleDetails(detailId, arrowId) {
+        function toggleDetails(teamName, detailId, arrowId) {
             const detailRow = document.getElementById(detailId);
             const arrow = document.getElementById(arrowId);
             
-            detailRow.classList.toggle('open');
-            arrow.classList.toggle('rotated');
+            if (openTeams.has(teamName)) {
+                openTeams.delete(teamName);
+                if (detailRow) detailRow.classList.remove('open');
+                if (arrow) arrow.classList.remove('rotated');
+            } else {
+                openTeams.add(teamName);
+                if (detailRow) detailRow.classList.add('open');
+                if (arrow) arrow.classList.add('rotated');
+            }
         }
 
         function filterTeams() {
