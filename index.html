@@ -1,522 +1,658 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Timetable Generator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
+    <title>Apex Legends Tournament Leaderboard</title>
+    <!-- Google Fonts: Rajdhani & Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        @media print {
-            body { background: white !important; color: black !important; }
-            .no-print { display: none !important; }
-            .print-shadow { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background: linear-gradient(rgba(10, 10, 14, 0.90), rgba(10, 10, 14, 0.95)), 
+                        url('https://images7.alphacoders.com/132/thumb-1920-1325463.jpeg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffffff; 
+            font-family: 'Rajdhani', sans-serif; 
+            text-align: center; 
+            min-height: 100vh;
+            padding-bottom: 60px;
+            overflow-x: hidden;
+            position: relative;
         }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Ambient Background Canvas for Embers */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.65;
+        }
+
+        /* Initial HUD Loading Screen Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-ring {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(255, 71, 71, 0.15);
+            border-top: 4px solid #ff4747;
+            border-right: 4px solid #ff4747;
+            border-radius: 50%;
+            animation: spin 1s linear infinite, glowPulse 1.5s ease-in-out infinite alternate;
+            margin-bottom: 20px;
+        }
+
+        .loader-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 3px;
+            color: #ff4747;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes glowPulse { 0% { box-shadow: 0 0 10px rgba(255,71,71,0.2); } 100% { box-shadow: 0 0 25px rgba(255,71,71,0.8); } }
+
+        .ticker-bar {
+            position: relative;
+            z-index: 10;
+            background: rgba(198, 48, 49, 0.9);
+            color: #fff;
+            padding: 8px 0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 10px rgba(255, 62, 62, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .sync-badge {
+            background: rgba(0,0,0,0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #ffbc00;
+            border: 1px solid rgba(255, 188, 0, 0.4);
+        }
+
+        .container {
+            position: relative;
+            z-index: 5;
+            max-width: 1000px;
+            margin: 30px auto 0;
+            padding: 0 20px;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .header-subtitle {
+            color: #ff4747;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        /* Champion Spotlight Card */
+        .champion-card {
+            position: relative;
+            background: linear-gradient(135deg, rgba(255, 71, 71, 0.25) 0%, rgba(20, 20, 26, 0.95) 100%);
+            border: 2px solid #ff4747;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 0 30px rgba(255, 71, 71, 0.35);
+            clip-path: polygon(0 0, 100% 0, 97% 100%, 0% 100%);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .champion-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(255, 71, 71, 0.5);
+        }
+
+        /* Sweeping Shimmer Effect across Champion Card */
+        .champion-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transform: skewX(-25deg);
+            animation: sweep 4s infinite;
+        }
+
+        @keyframes sweep { 0% { left: -150%; } 30%, 100% { left: 150%; } }
+
+        .champion-info { text-align: left; z-index: 2; }
+        .champion-badge { 
+            font-family: 'Orbitron', sans-serif;
+            background: #ff4747;
+            color: #fff;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .champion-name { font-size: 2.2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+        .champion-score { font-size: 2.5rem; font-family: 'Orbitron', sans-serif; color: #ffbc00; z-index: 2; }
+
+        /* Tactical HUD Search Bar & Controls */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 15px;
+            background: rgba(18, 18, 24, 0.75);
+            border: 1px solid rgba(255, 71, 71, 0.3);
+            border-left: 4px solid #ff4747;
+            padding: 10px 18px;
+            border-radius: 6px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .controls::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 16px 16px 0;
+            border-color: transparent #ff4747 transparent transparent;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            color: #ff4747;
+            font-size: 1rem;
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            background: rgba(10, 10, 15, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s ease;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .search-input::placeholder {
+            color: #7a7a8c;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: none;
+        }
+
+        .search-input:focus {
+            background: rgba(15, 15, 22, 0.95);
+            border-color: #ff4747;
+            box-shadow: 0 0 15px rgba(255, 71, 71, 0.35);
+        }
+
+        .search-input:focus ~ .search-icon {
+            color: #ffbc00;
+        }
+
+        .team-count-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 16px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .team-count-badge span {
+            color: #ff4747;
+            font-weight: 900;
+        }
+
+        /* Leaderboard Table */
+        .table-container {
+            background: rgba(18, 18, 24, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { 
+            background: #191921; 
+            color: #ff4747; 
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            padding: 16px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #ff4747;
+        }
+        
+        td { padding: 16px; font-size: 1.2rem; font-weight: 600; }
+        tr.main-row { 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+            transition: background 0.25s ease, transform 0.2s ease; 
+            cursor: pointer; 
+        }
+        tr.main-row:hover { background: rgba(255, 71, 71, 0.16); }
+
+        /* Row updating score flash animation */
+        @keyframes rowPulse {
+            0% { background: rgba(46, 204, 113, 0.3); }
+            100% { background: transparent; }
+        }
+
+        .row-updated {
+            animation: rowPulse 1.2s ease-out;
+        }
+
+        /* Rank Badges */
+        .rank-cell { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; }
+        .rank-1 { color: #ffd700; text-shadow: 0 0 12px rgba(255, 215, 0, 0.6); }
+        .rank-2 { color: #c0c0c0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.5); }
+        .rank-3 { color: #cd7f32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.5); }
+
+        /* Status Animations */
+        .status-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+
+        .status-in-match .status-dot { background-color: #2ecc71; animation: pulse-green 1.5s infinite; }
+        .status-eliminated .status-dot { background-color: #e74c3c; }
+        .status-waiting .status-dot { background-color: #95a5a6; }
+
+        /* Expandable Player Details Row */
+        .details-row { display: none; background: rgba(10, 10, 15, 0.95); }
+        .details-row.open { display: table-row; }
+        
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 15px 25px;
+            text-align: left;
+        }
+
+        .player-card {
+            background: rgba(30, 30, 40, 0.8);
+            border-left: 3px solid #ff4747;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+
+        .player-title {
+            font-size: 0.75rem;
+            color: #888;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .player-stats {
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .toggle-icon {
+            font-size: 0.8rem;
+            color: #ff4747;
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        .toggle-icon.rotated { transform: rotate(90deg); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-full flex flex-col font-sans antialiased">
+<body>
 
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Toggle Sidebar">
-                    <i class="fa-solid fa-bars text-lg"></i>
-                </button>
-                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
-                    <i class="fa-solid fa-calendar-days text-lg"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">TimeCraft</h1>
-                    <p class="text-xs text-slate-500 font-medium hidden sm:block">Interactive Timetable & Schedule Generator</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2 sm:space-x-3">
-                <button onclick="openConfigModal()" class="inline-flex items-center px-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition">
-                    <i class="fa-solid fa-gear sm:mr-2 text-slate-500"></i> <span class="hidden sm:inline">Configure Grid</span><span class="sm:hidden">Config</span>
-                </button>
-                <button onclick="exportTable()" class="inline-flex items-center px-3.5 sm:px-4 py-2 bg-indigo-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition">
-                    <i class="fa-solid fa-print sm:mr-2"></i> <span class="hidden sm:inline">Print / Export</span><span class="sm:hidden">Export</span>
-                </button>
-            </div>
-        </div>
-    </header>
+    <!-- Dynamic Particle Overlay Canvas -->
+    <canvas id="bg-canvas"></canvas>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden relative">
-        
-        <!-- Mobile Sidebar Overlay -->
-        <div id="sidebar-overlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden hidden transition-opacity"></div>
-
-        <!-- Sidebar (Drawer on mobile, sticky sidebar on desktop) -->
-        <aside id="sidebar-drawer" class="fixed inset-y-0 left-0 z-50 w-80 bg-white p-4 sm:p-5 shadow-2xl lg:shadow-none lg:static lg:w-80 flex-shrink-0 flex flex-col gap-5 no-print overflow-y-auto max-h-full transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out border-r lg:border border-slate-200 lg:rounded-2xl">
-            <div class="flex items-center justify-between lg:hidden pb-2 border-b border-slate-100">
-                <h2 class="font-bold text-slate-900 flex items-center"><i class="fa-solid fa-bars-staggered text-indigo-600 mr-2"></i> Menu & Subjects</h2>
-                <button onclick="toggleMobileSidebar()" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Subjects Card -->
-            <div class="bg-white lg:bg-transparent rounded-2xl lg:border-0 border border-slate-100 shadow-sm lg:shadow-none p-1 sm:p-0">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center">
-                        <i class="fa-solid fa-book-open text-indigo-600 mr-2"></i> Subjects & Courses
-                    </h2>
-                    <span id="subject-count" class="text-xs font-medium px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">0</span>
-                </div>
-                <form id="add-subject-form" onsubmit="handleAddSubject(event)" class="space-y-3">
-                    <div>
-                        <input type="text" id="sub-name" placeholder="Subject Name (e.g. Mathematics)" required
-                            class="w-full text-sm px-3 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="sub-code" placeholder="Code (e.g. MATH101)"
-                            class="text-sm px-3 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <input type="text" id="sub-room" placeholder="Room (e.g. 302B)"
-                            class="text-sm px-3 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div class="flex items-center justify-between pt-1">
-                        <div class="flex items-center space-x-2">
-                            <label for="sub-color" class="text-xs font-medium text-slate-600">Color:</label>
-                            <input type="color" id="sub-color" value="#4f46e5" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white">
-                        </div>
-                        <button type="submit" class="px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition shadow-sm">
-                            <i class="fa-solid fa-plus mr-1"></i> Add Subject
-                        </button>
-                    </div>
-                </form>
-
-                <div class="mt-4 border-t border-slate-100 pt-3">
-                    <p class="text-[11px] sm:text-xs text-slate-500 mb-2 font-medium">Tap subject to select, then tap grid cell to assign.</p>
-                    <div id="subjects-list" class="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions Card -->
-            <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4">
-                <h2 class="text-sm sm:text-base font-semibold text-slate-900 mb-3 flex items-center">
-                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 mr-2"></i> Quick Actions
-                </h2>
-                <div class="space-y-2">
-                    <button onclick="autoFillSample()" class="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition flex items-center justify-between border border-slate-200/80">
-                        <span class="flex items-center"><i class="fa-solid fa-bolt text-amber-500 mr-2.5"></i> Load Sample Data</span>
-                        <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-                    </button>
-                    <button onclick="clearTimetable()" class="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition flex items-center justify-between border border-rose-100">
-                        <span class="flex items-center"><i class="fa-solid fa-trash-can text-rose-500 mr-2.5"></i> Clear Timetable</span>
-                        <i class="fa-solid fa-chevron-right text-xs text-rose-300"></i>
-                    </button>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Timetable Section -->
-        <section class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <!-- Table Toolbar inside grid view -->
-            <div class="p-3 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print bg-slate-50/50">
-                <div class="flex items-center space-x-2">
-                    <input type="text" id="timetable-title" value="My Weekly Timetable" 
-                        class="text-base sm:text-lg font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-600 focus:outline-none px-1 py-0.5 transition w-full sm:w-auto">
-                </div>
-                <div class="flex items-center justify-between sm:justify-end">
-                    <div id="active-selection-indicator" class="text-xs font-medium px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl flex items-center shadow-xs w-full sm:w-auto overflow-hidden text-ellipsis whitespace-nowrap">
-                        <span class="w-2 h-2 rounded-full bg-slate-400 mr-2 flex-shrink-0"></span> <span class="truncate">No subject selected</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mobile Horizontal Scroll Hint Bar -->
-            <div class="sm:hidden bg-indigo-50/70 border-b border-indigo-100 px-3 py-1.5 flex items-center justify-center text-[11px] text-indigo-700 font-medium no-print">
-                <i class="fa-solid fa-arrows-left-right mr-1.5"></i> Swipe horizontally to view all days
-            </div>
-
-            <!-- Responsive Table Container -->
-            <div class="flex-1 overflow-auto p-2 sm:p-4 touch-pan-x touch-pan-y">
-                <div id="timetable-container" class="min-w-[650px] sm:min-w-[750px]">
-                    <!-- Dynamically generated table -->
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <div id="config-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <!-- ... existing modal content ... -->
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700">Save Changes</button>
-                </div>
-            </form>
-        </div>
+    <!-- Initial Loading Screen Overlay -->
+    <div id="loading-overlay">
+        <div class="loader-ring"></div>
+        <div class="loader-text">SYNCHRONIZING APEX NETWORK...</div>
     </div>
 
-    <div id="message-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-slate-200 text-center">
-            <div id="modal-icon" class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3 text-xl">
-                <i class="fa-solid fa-info"></i>
+    <div class="ticker-bar">
+        <span>⚡ LIVE BROADCAST • APEX LEGENDS UNIVERSITY CHAMPIONSHIP ⚡</span>
+        <span class="sync-badge" id="sync-timer">SYNC • 3s</span>
+    </div>
+
+    <div class="container">
+        <h1 class="header-title">APEX LEGENDS</h1>
+        <div class="header-subtitle">Tournament Leaderboard</div>
+
+        <div class="champion-card" id="champion-card">
+            <div class="champion-info">
+                <span class="champion-badge">🏆 CURRENT LEADER</span>
+                <div class="champion-name" id="champ-name">Loading...</div>
             </div>
-            <h3 id="modal-title" class="text-base font-bold text-slate-900 mb-1">Notice</h3>
-            <p id="modal-text" class="text-sm text-slate-600 mb-5">Message goes here.</p>
-            <button onclick="closeMessageModal()" class="w-full py-2.5 bg-indigo-600 text-white font-medium rounded-xl text-sm hover:bg-indigo-700 transition">OK</button>
+            <div class="champion-score" id="champ-score">-- PTS</div>
+        </div>
+
+        <div class="controls">
+            <div class="search-wrapper">
+                <input type="text" id="search-bar" class="search-input" placeholder="Search squad or player name..." onkeyup="filterTeams()">
+                <span class="search-icon">🔍</span>
+            </div>
+            <div class="team-count-badge">SQUADS: <span id="count-val">--</span></div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Team Name</th>
+                        <th>Kills</th>
+                        <th>Placement</th>
+                        <th>Total Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // State management
-        let state = {
-            days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-            timeSlots: ["08:00 - 09:00", "09:00 - 10:00", "10:15 - 11:15", "11:15 - 12:15", "13:30 - 14:30", "14:30 - 15:30"],
-            subjects: [
-                { id: 'sub-1', name: 'Mathematics', code: 'MATH101', room: 'Room 201', color: '#4f46e5' },
-                { id: 'sub-2', name: 'Physics', code: 'PHYS102', room: 'Lab 3', color: '#0ea5e9' },
-                { id: 'sub-3', name: 'Computer Science', code: 'CS103', room: 'Lab 1', color: '#10b981' },
-                { id: 'sub-4', name: 'English Literature', code: 'ENG104', room: 'Room 105', color: '#f59e0b' },
-                { id: 'sub-5', name: 'History', code: 'HIST105', room: 'Room 204', color: '#ec4899' }
-            ],
-            schedule: {}, // key: "dayIndex-slotIndex", value: subjectId
-            selectedSubjectId: null
-        };
+        // Direct clean CSV export URL from Google Sheets
+        const sheetId = '1RB6RdDieEWf5MBorERKsL9nWbt6qc01rY_5aCyNZjPA';
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`; 
 
-        function toggleMobileSidebar() {
-            const drawer = document.getElementById('sidebar-drawer');
-            const overlay = document.getElementById('sidebar-overlay');
-            const isOpen = !drawer.classList.contains('-translate-x-full');
-            
-            if (isOpen) {
-                drawer.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            } else {
-                drawer.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
+        let globalData = [];
+        let isInitialLoad = true;
+        let countdown = 3;
+
+        // Background Particle Embers Animation
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + Math.random() * 20;
+                this.size = Math.random() * 2.5 + 0.5;
+                this.speedY = Math.random() * 1.2 + 0.4;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.opacity = Math.random() * 0.8 + 0.2;
+                this.color = Math.random() > 0.4 ? '#ff4747' : '#ffbc00';
+            }
+            update() {
+                this.y -= this.speedY;
+                this.x += this.speedX;
+                this.opacity -= 0.003;
+                if (this.y < -10 || this.opacity <= 0) this.reset();
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
             }
         }
 
-        // Load saved state from localStorage if available
-        function loadState() {
-            const saved = localStorage.getItem('timecraft_state');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    state = { ...state, ...parsed };
-                } catch(e) {
-                    console.error("Failed to load saved state", e);
+        for (let i = 0; i < 45; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Sync Timer Countdown
+        setInterval(() => {
+            countdown--;
+            if (countdown <= 0) countdown = 3;
+            document.getElementById('sync-timer').textContent = `SYNC • ${countdown}s`;
+        }, 1000);
+
+        async function fetchLeaderboard() {
+            try {
+                const cacheBustUrl = csvUrl + (csvUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                const response = await fetch(cacheBustUrl, { 
+                    cache: 'no-store',
+                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+                });
+                if (!response.ok) return; 
+                
+                const csvText = await response.text();
+                const rows = csvText.split('\n'); 
+                globalData = [];
+
+                for (let i = 1; i < rows.length; i++) { 
+                    const line = rows[i].trim();
+                    if (!line) continue; 
+                    
+                    if (line.startsWith('/*') || line.startsWith('var ') || line.startsWith('function') || line.startsWith('<')) {
+                        continue;
+                    }
+                    
+                    const cols = line.split(',').map(col => col.replace(/^"(.*)"$/, '$1').trim());
+                    
+                    if (cols[0].includes('function') || cols[0].includes('Object.') || cols[0] === 'Team Name') {
+                        continue;
+                    }
+
+                    const kills = parseInt(cols[1]) || 0;
+                    const placement = parseInt(cols[2]) || 0;
+                    const totalCalculated = kills + placement;
+                    const totalCol = parseInt(cols[3]);
+                    const total = !isNaN(totalCol) && totalCol > 0 ? totalCol : totalCalculated;
+
+                    globalData.push({
+                        name: cols[0] || 'Unknown',
+                        kills: kills,
+                        placement: placement,
+                        total: total,
+                        status: cols[4] || 'Waiting',
+                        p1: cols[5] || 'N/A',
+                        p2: cols[6] || 'N/A',
+                        p3: cols[7] || 'N/A'
+                    });
                 }
+
+                globalData.sort((a, b) => b.total - a.total);
+
+                if (globalData.length > 0) {
+                    document.getElementById('champ-name').textContent = globalData[0].name;
+                    document.getElementById('champ-score').textContent = globalData[0].total + ' PTS';
+                }
+
+                renderTable(globalData);
+
+                // Hide loader overlay smoothly after initial data load
+                if (isInitialLoad) {
+                    isInitialLoad = false;
+                    setTimeout(() => {
+                        const loader = document.getElementById('loading-overlay');
+                        if (loader) loader.classList.add('hidden');
+                    }, 400);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
             }
         }
 
-        function saveState() {
-            localStorage.setItem('timecraft_state', JSON.stringify({
-                days: state.days,
-                timeSlots: state.timeSlots,
-                subjects: state.subjects,
-                schedule: state.schedule
-            }));
-        }
+        function renderTable(data) {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = ''; 
 
-        // Custom notification dialog instead of alert()
-        function showMessage(title, text, type = 'info') {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-text').innerText = text;
-            const iconEl = document.getElementById('modal-icon');
-            if(type === 'success') {
-                iconEl.className = 'w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-xl';
-                iconEl.innerHTML = '<i class="fa-solid fa-check"></i>';
-            } else if(type === 'error') {
-                iconEl.className = 'w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3 text-xl';
-                iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else {
-                iconEl.className = 'w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3 text-xl';
-                iconEl.innerHTML = '<i class="fa-solid fa-info"></i>';
-            }
-            document.getElementById('message-modal').classList.remove('hidden');
-        }
+            // Update live squad count badge
+            const countVal = document.getElementById('count-val');
+            if (countVal) countVal.textContent = data.length;
 
-        function closeMessageModal() {
-            document.getElementById('message-modal').classList.add('hidden');
-        }
+            data.forEach((team, index) => {
+                let rankDisplay = `#${index + 1}`;
+                let rankClass = '';
+                if (index === 0) { rankDisplay = '🥇 #1'; rankClass = 'rank-1'; }
+                else if (index === 1) { rankDisplay = '🥈 #2'; rankClass = 'rank-2'; }
+                else if (index === 2) { rankDisplay = '🥉 #3'; rankClass = 'rank-3'; }
 
-        // Render functions
-        function renderAll() {
-            renderSubjectsList();
-            renderTimetableGrid();
-            updateSelectionIndicator();
-        }
+                const statusClass = team.status.toLowerCase().replace(/\s+/g, '-');
+                const detailId = `details-${index}`;
+                const arrowId = `arrow-${index}`;
 
-        function renderSubjectsList() {
-            const container = document.getElementById('subjects-list');
-            document.getElementById('subject-count').innerText = state.subjects.length;
-            
-            if (state.subjects.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No subjects added yet.</p>';
-                return;
-            }
+                const mainTr = document.createElement('tr');
+                mainTr.className = 'main-row';
+                mainTr.onclick = () => toggleDetails(detailId, arrowId);
+                
+                mainTr.innerHTML = `
+                    <td class="rank-cell ${rankClass}">${rankDisplay}</td>
+                    <td style="text-align: left; padding-left: 25px;">
+                        ${team.name} <span id="${arrowId}" class="toggle-icon">▶</span>
+                    </td>
+                    <td>${team.kills}</td>
+                    <td>${team.placement}</td>
+                    <td style="color: #ffbc00; font-weight: 700;">${team.total}</td>
+                    <td>
+                        <div class="status-wrapper status-${statusClass}">
+                            <div class="status-dot"></div>
+                            <span>${team.status}</span>
+                        </div>
+                    </td>
+                `;
 
-            container.innerHTML = state.subjects.map(sub => {
-                const isSelected = state.selectedSubjectId === sub.id;
-                return `
-                    <div onclick="selectSubject('${sub.id}')" 
-                        class="p-3 rounded-xl border transition cursor-pointer flex items-center justify-between group ${isSelected ? 'border-indigo-600 bg-indigo-50/50 shadow-sm ring-1 ring-indigo-600' : 'border-slate-200 hover:border-slate-300 bg-white'}">
-                        <div class="flex items-center space-x-3 overflow-hidden">
-                            <div class="w-3.5 h-3.5 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></div>
-                            <div class="truncate">
-                                <p class="text-sm font-semibold text-slate-900 truncate">${sub.name}</p>
-                                <p class="text-xs text-slate-500 truncate">${sub.code || ''} ${sub.room ? '• ' + sub.room : ''}</p>
+                const detailTr = document.createElement('tr');
+                detailTr.id = detailId;
+                detailTr.className = 'details-row';
+                detailTr.innerHTML = `
+                    <td colspan="6">
+                        <div class="player-grid">
+                            <div class="player-card">
+                                <div class="player-title">Player 1</div>
+                                <div class="player-stats">${team.p1}</div>
+                            </div>
+                            <div class="player-card">
+                                <div class="player-title">Player 2</div>
+                                <div class="player-stats">${team.p2}</div>
+                            </div>
+                            <div class="player-card">
+                                <div class="player-title">Player 3</div>
+                                <div class="player-stats">${team.p3}</div>
                             </div>
                         </div>
-                        <button onclick="event.stopPropagation(); deleteSubject('${sub.id}')" 
-                            class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
-                    </div>
+                    </td>
                 `;
-            }).join('');
-        }
 
-        function renderTimetableGrid() {
-            const container = document.getElementById('timetable-container');
-            
-            let html = `
-                <table class="w-full border-collapse print-shadow">
-                    <thead>
-                        <tr class="bg-slate-100/70 border-b border-slate-200">
-                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider w-32 border-r border-slate-200">Time / Day</th>
-            `;
-            
-            state.days.forEach(day => {
-                html += `<th class="py-3 px-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider border-r border-slate-200 last:border-r-0">${day}</th>`;
+                tbody.appendChild(mainTr);
+                tbody.appendChild(detailTr);
             });
+        }
+
+        function toggleDetails(detailId, arrowId) {
+            const detailRow = document.getElementById(detailId);
+            const arrow = document.getElementById(arrowId);
             
-            html += `</tr></thead><tbody>`;
-
-            state.timeSlots.forEach((slot, slotIndex) => {
-                html += `<tr class="border-b border-slate-200 hover:bg-slate-50/50 transition">`;
-                html += `<td class="py-3 px-4 text-xs font-medium text-slate-600 bg-slate-50/50 border-r border-slate-200 whitespace-nowrap">${slot}</td>`;
-
-                state.days.forEach((day, dayIndex) => {
-                    const key = `${dayIndex}-${slotIndex}`;
-                    const assignedSubId = state.schedule[key];
-                    const sub = state.subjects.find(s => s.id === assignedSubId);
-
-                    if (sub) {
-                        html += `
-                            <td onclick="handleCellClick(${dayIndex}, ${slotIndex})" 
-                                class="p-2 border-r border-slate-200 last:border-r-0 cursor-pointer relative group h-24 align-top">
-                                <div class="w-full h-full rounded-xl p-2.5 flex flex-col justify-between shadow-sm transition transform hover:scale-[1.02]" 
-                                    style="background-color: ${sub.color}15; border-left: 4px solid ${sub.color};">
-                                    <div>
-                                        <p class="text-xs font-bold text-slate-900 leading-snug">${sub.name}</p>
-                                        <p class="text-[11px] text-slate-600 mt-0.5">${sub.code || ''}</p>
-                                    </div>
-                                    <div class="flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                                        <span>${sub.room || ''}</span>
-                                        <button onclick="event.stopPropagation(); clearCell(${dayIndex}, ${slotIndex})" 
-                                            class="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition p-1">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </td>
-                        `;
-                    } else {
-                        html += `
-                            <td onclick="handleCellClick(${dayIndex}, ${slotIndex})" 
-                                class="p-2 border-r border-slate-200 last:border-r-0 cursor-pointer group h-24 align-top">
-                                <div class="w-full h-full rounded-xl border border-dashed border-slate-200 group-hover:border-indigo-400 group-hover:bg-indigo-50/30 transition flex items-center justify-center">
-                                    <span class="text-slate-300 group-hover:text-indigo-400 text-xs font-medium opacity-0 group-hover:opacity-100 transition">
-                                        <i class="fa-solid fa-plus mr-1"></i> Add
-                                    </span>
-                                </div>
-                            </td>
-                        `;
-                    }
-                });
-
-                html += `</tr>`;
-            });
-
-            html += `</tbody></table>`;
-            container.innerHTML = html;
+            detailRow.classList.toggle('open');
+            arrow.classList.toggle('rotated');
         }
 
-        function selectSubject(id) {
-            state.selectedSubjectId = state.selectedSubjectId === id ? null : id;
-            updateSelectionIndicator();
-            renderSubjectsList();
-            // On mobile, automatically close drawer after selecting a subject to immediately let users tap cells
-            if (window.innerWidth < 1024 && state.selectedSubjectId) {
-                toggleMobileSidebar();
-            }
+        function filterTeams() {
+            const query = document.getElementById('search-bar').value.toLowerCase();
+            const filtered = globalData.filter(team => team.name.toLowerCase().includes(query));
+            renderTable(filtered);
         }
 
-        function updateSelectionIndicator() {
-            const indicator = document.getElementById('active-selection-indicator');
-            if (state.selectedSubjectId) {
-                const sub = state.subjects.find(s => s.id === state.selectedSubjectId);
-                indicator.innerHTML = `<span class=\"w-2 h-2 rounded-full mr-2 flex-shrink-0\" style=\"background-color: ${sub.color}\"></span> <span class=\"truncate\">Selected: <strong class=\"ml-0.5\">${sub.name}</strong> (Tap cell)</span>`;
-                indicator.className = 'text-xs font-medium px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl flex items-center border border-indigo-100 shadow-xs';
-            } else {
-                indicator.innerHTML = `<span class=\"w-2 h-2 rounded-full bg-slate-400 mr-2 flex-shrink-0\"></span> <span class=\"truncate\">No subject selected (Tap a subject)</span>`;
-                indicator.className = 'text-xs font-medium px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl flex items-center shadow-xs';
-            }
-        }
-
-        function handleAddSubject(e) {
-            e.preventDefault();
-            const name = document.getElementById('sub-name').value.trim();
-            const code = document.getElementById('sub-code').value.trim();
-            const room = document.getElementById('sub-room').value.trim();
-            const color = document.getElementById('sub-color').value;
-
-            if (!name) return;
-
-            const newSub = {
-                id: 'sub-' + Date.now(),
-                name,
-                code,
-                room,
-                color
-            };
-
-            state.subjects.push(newSub);
-            state.selectedSubjectId = newSub.id;
-            document.getElementById('add-subject-form').reset();
-            document.getElementById('sub-color').value = '#4f46e5';
-
-            saveState();
-            renderAll();
-        }
-
-        function deleteSubject(id) {
-            state.subjects = state.subjects.filter(s => s.id !== id);
-            if (state.selectedSubjectId === id) state.selectedSubjectId = null;
-            
-            // Remove from schedule
-            Object.keys(state.schedule).forEach(key => {
-                if (state.schedule[key] === id) {
-                    delete state.schedule[key];
-                }
-            });
-
-            saveState();
-            renderAll();
-        }
-
-        function handleCellClick(dayIndex, slotIndex) {
-            const key = `${dayIndex}-${slotIndex}`;
-            if (state.selectedSubjectId) {
-                state.schedule[key] = state.selectedSubjectId;
-                saveState();
-                renderTimetableGrid();
-            } else {
-                if (state.schedule[key]) {
-                    delete state.schedule[key];
-                    saveState();
-                    renderTimetableGrid();
-                } else {
-                    showMessage("Tip", "Please select a subject from the left sidebar first before clicking a cell, or click an assigned cell to clear it.");
-                }
-            }
-        }
-
-        function clearCell(dayIndex, slotIndex) {
-            const key = `${dayIndex}-${slotIndex}`;
-            delete state.schedule[key];
-            saveState();
-            renderTimetableGrid();
-        }
-
-        function clearTimetable() {
-            state.schedule = {};
-            saveState();
-            renderTimetableGrid();
-            showMessage("Cleared", "Timetable has been cleared successfully.", "success");
-        }
-
-        function autoFillSample() {
-            state.schedule = {
-                "0-0": state.subjects[0]?.id,
-                "0-1": state.subjects[1]?.id,
-                "0-2": state.subjects[2]?.id,
-                "1-0": state.subjects[3]?.id,
-                "1-1": state.subjects[4]?.id,
-                "2-0": state.subjects[0]?.id,
-                "2-2": state.subjects[1]?.id,
-                "3-1": state.subjects[2]?.id,
-                "3-3": state.subjects[3]?.id,
-                "4-0": state.subjects[4]?.id,
-                "4-2": state.subjects[2]?.id
-            };
-            saveState();
-            renderTimetableGrid();
-            showMessage("Success", "Sample data loaded successfully!", "success");
-        }
-
-        // Modal configuration handlers
-        function openConfigModal() {
-            document.getElementById('config-days').value = state.days.join(', ');
-            document.getElementById('config-slots').value = state.timeSlots.join(', ');
-            document.getElementById('config-modal').classList.remove('hidden');
-        }
-
-        function closeConfigModal() {
-            document.getElementById('config-modal').classList.add('hidden');
-        }
-
-        function handleSaveConfig(e) {
-            e.preventDefault();
-            const daysInput = document.getElementById('config-days').value;
-            const slotsInput = document.getElementById('config-slots').value;
-
-            const newDays = daysInput.split(',').map(d => d.trim()).filter(d => d.length > 0);
-            const newSlots = slotsInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
-
-            if (newDays.length === 0 || newSlots.length === 0) {
-                showMessage("Error", "Please provide at least one day and one time slot.", "error");
-                return;
-            }
-
-            state.days = newDays;
-            state.timeSlots = newSlots;
-            
-            // Clean up obsolete schedule keys
-            const validSchedule = {};
-            Object.keys(state.schedule).forEach(key => {
-                const [dIdx, sIdx] = key.split('-').map(Number);
-                if (dIdx < newDays.length && sIdx < newSlots.length) {
-                    validSchedule[key] = state.schedule[key];
-                }
-            });
-            state.schedule = validSchedule;
-
-            saveState();
-            closeConfigModal();
-            renderAll();
-            showMessage("Success", "Timetable grid configuration updated!", "success");
-        }
-
-        function exportTable() {
-            window.print();
-        }
-
-        // Initialize on load
-        window.onload = function() {
-            loadState();
-            renderAll();
-        }
+        fetchLeaderboard();
+        setInterval(fetchLeaderboard, 3000); 
     </script>
 </body>
 </html>
